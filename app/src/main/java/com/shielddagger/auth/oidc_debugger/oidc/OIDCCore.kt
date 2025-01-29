@@ -1,6 +1,7 @@
 package com.shielddagger.auth.oidc_debugger.oidc
 
 import android.net.Uri
+import java.io.Serializable
 import java.util.ArrayList
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -66,12 +67,13 @@ enum class OIDCAuthState(private val type: String) {
 
 class OIDCCore(
     private val responseType: List<OIDCResponseType>,
-    private val scope: List<String>,
-    private val clientId: String,
-    private val redirectUri: String,
-    private val authorizeUri: String,
-    private val tokenUri: String,
-    private val clientSecret: String = "",
+    val scope: List<String>,
+    val clientId: String,
+    val redirectUri: String,
+    val authorizeUri: String,
+    val tokenUri: String,
+    val userinfoUri: String,
+    val clientSecret: String = "",
     private val clientAuth: ClientAuthType = ClientAuthType.BASIC
 ) {
 

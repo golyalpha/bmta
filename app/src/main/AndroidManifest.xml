@@ -15,6 +15,21 @@
         android:theme="@style/Theme.OIDCDebugger"
         tools:targetApi="31">
         <activity
+            android:name=".ValidateActivity"
+            android:exported="true"
+            android:label="@string/title_activity_validate"
+            android:theme="@style/Theme.OIDCDebugger">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="oidcdebugger.shielddaggerhosted.com"
+                    android:pathPrefix="/redirect" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.OIDCDebugger">
@@ -23,8 +38,17 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="oidcdebugger.shielddaggerhosted.com"
+                    android:pathPrefix="/home"/>
+            </intent-filter>
         </activity>
     </application>
-
 
 </manifest>

@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.shielddagger.auth.oidc_debugger"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.shielddagger.auth.oidc_debugger"

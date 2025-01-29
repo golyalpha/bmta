@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">OIDC Debugger</string>
+    <string name="title_activity_validate">OIDC Debugger - Redirect</string>
+    <string name="redirect_uri">https://oidcdebugger.shielddaggerhosted.com/redirect</string>
 </resources>
