@@ -35,23 +35,23 @@ enum class OIDCPromptTypes(private val type:String){
     }
 }
 
-enum class OIDCAuthState(private val type: String) {
-    CODE_OK("code_ok"),
-    CODE_FAIL("code_fail"),
-    TOKEN_OK("token_ok"),
-    TOKEN_FAIL("token_fail"),
-    ID_TOKEN_OK("id_token_ok"),
-    ID_TOKEN_FAIL("id_token_fail"),
-    INVALID_STATE("invalid_state"),
-    INTERACTION_REQUIRED("interaction_required"),
-    LOGIN_REQUIRED("login_required"),
-    ACCOUNT_SELECTION_REQUIRED("account_selection_required"),
-    CONSENT_REQUIRED("consent_required"),
-    INVALID_REQUEST_URI("invalid_request_uri"),
-    INVALID_REQUEST_OBJECT("invalid_request_object"),
-    REQUEST_NOT_SUPPORTED("request_not_supported"),
-    REQUEST_URI_NOT_SUPPORTED("request_uri_not_supported"),
-    REGISTRATION_NOT_SUPPORTED("registration_not_supported");
+enum class OIDCAuthState(private val type: String, message: String, success: Boolean) {
+    CODE_OK("code_ok", "Authorization Code OK", true),
+    CODE_FAIL("code_fail","Authorization Code FAIL", false),
+    TOKEN_OK("token_ok", "Token OK", true),
+    TOKEN_FAIL("token_fail", "Token FAIL", false),
+    ID_TOKEN_OK("id_token_ok", "ID Token OK", true),
+    ID_TOKEN_FAIL("id_token_fail", "ID Token FAIL", false),
+    INVALID_STATE("invalid_state", "Invalid State Parameter", false),
+    INTERACTION_REQUIRED("interaction_required", "IdP Interaction Required", false),
+    LOGIN_REQUIRED("login_required", "IdP Login Required", false),
+    ACCOUNT_SELECTION_REQUIRED("account_selection_required", "IdP Account Selection Required", false),
+    CONSENT_REQUIRED("consent_required", "IdP Consent Required", false),
+    INVALID_REQUEST_URI("invalid_request_uri", "Invalid Request URI", false),
+    INVALID_REQUEST_OBJECT("invalid_request_object", "Invalid Request Object", false),
+    REQUEST_NOT_SUPPORTED("request_not_supported", "Request Not Supported", false),
+    REQUEST_URI_NOT_SUPPORTED("request_uri_not_supported", "Request URI Not Supported", false),
+    REGISTRATION_NOT_SUPPORTED("registration_not_supported", "Registration Not Supported", false);
 
     override fun toString(): String {
         return this.type
