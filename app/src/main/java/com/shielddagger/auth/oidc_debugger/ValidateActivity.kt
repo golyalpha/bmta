@@ -47,7 +47,6 @@ class ValidateActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val action = intent?.action
         val data = intent?.data
 
         enableEdgeToEdge()
