@@ -1,6 +1,7 @@
 package com.shielddagger.auth.oidc_debugger.oidc
 
 import android.net.Uri
+import android.util.Log
 import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.JsonObjectRequest
@@ -74,7 +75,8 @@ enum class OIDCTokenErrorResponse(private val type: String, val message: String)
     INVALID_GRANT("invalid_grant", "Invalid Grant"),
     UNAUTHORIZED_CLIENT("unauthorized_client", "Unauthorized Client"),
     UNAUTHORIZED_GRANT_TYPE("unsupported_grant_type", "Unauthorized Grant Type"),
-    INVALID_SCOPE("invalid_scope", "Invalid Scope");
+    INVALID_SCOPE("invalid_scope", "Invalid Scope"),
+    BAD_STATE("bad_state", "Incorrect Session State");
 
     override fun toString(): String {
         return this.type
@@ -110,6 +112,8 @@ data class TokenResponse(
     val tokenType: OIDCTokenType? = null,
     val expiresIn: Int? = null,
     val refreshToken: String? = null,
+    val refreshExpiresIn: Int? = null,
+    val idToken: String? = null,
     val scope: List<String>? = null
 )
 
@@ -218,16 +222,28 @@ class OIDCCore(
             )
         }
 
+        Log.d("oidccore", "validateTokenResponse: ${response.toString(4)}")
+
         return TokenResponse(
             accessToken = response.getString("access_token"),
-            tokenType = OIDCTokenType.fromString(response.getString("token_type")),
+            tokenType = OIDCTokenType.fromString(response.getString("token_type").lowercase()),
+            idToken = response.getString("id_token"),
             expiresIn = if (response.has("expires_in")) response.getInt("expires_in") else null,
             refreshToken = if (response.has("refresh_token")) response.getString("refresh_token") else null,
+            refreshExpiresIn = if (response.has("refresh_expires_in")) response.getInt("refresh_expires_in") else null,
             scope = if (response.has("scope")) response.getString("scope").split(" ") else null
         )
     }
 
-    fun getUserinfo(accessToken: String?): JsonObjectRequest? {
-        return null
+    fun getUserinfo(accessToken: String,
+                    responseHandler: Response.Listener<JSONObject> = Response.Listener {},
+                    errorHandler: Response.ErrorListener = Response.ErrorListener {}): JsonObjectRequest {
+        return JsonAuthRequest(
+            Request.Method.GET,
+            userinfoUri,
+            accessToken,
+            responseHandler,
+            errorHandler
+        )
     }
 }

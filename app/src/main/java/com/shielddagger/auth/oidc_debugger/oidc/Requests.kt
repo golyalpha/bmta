@@ -48,3 +48,18 @@ class JsonFormRequest(
         return null
     }
 }
+
+class JsonAuthRequest(
+    method: Int,
+    url: String?,
+    private var token: String,
+    listener: Response.Listener<JSONObject>?,
+    errorListener: Response.ErrorListener?
+) : JsonObjectRequest(method, url, null, listener, errorListener) {
+    override fun getHeaders(): MutableMap<String, String> {
+        val headers = mutableMapOf<String,String>()
+        headers.putAll(super.getHeaders())
+        headers["Authorization"] = "Bearer $token"
+        return headers;
+    }
+}
