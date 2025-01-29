@@ -1,7 +1,10 @@
 package com.shielddagger.auth.oidc_debugger.oidc
 
 import android.net.Uri
-import java.io.Serializable
+import com.android.volley.Request
+import com.android.volley.Response
+import com.android.volley.toolbox.JsonObjectRequest
+import org.json.JSONObject
 import java.util.ArrayList
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -35,7 +38,7 @@ enum class OIDCPromptTypes(private val type:String){
     }
 }
 
-enum class OIDCAuthState(private val type: String, message: String, success: Boolean) {
+enum class OIDCAuthState(private val type: String, val message: String, val success: Boolean) {
     CODE_OK("code_ok", "Authorization Code OK", true),
     CODE_FAIL("code_fail","Authorization Code FAIL", false),
     TOKEN_OK("token_ok", "Token OK", true),
@@ -65,6 +68,52 @@ enum class OIDCAuthState(private val type: String, message: String, success: Boo
     }
 }
 
+enum class OIDCTokenErrorResponse(private val type: String, val message: String){
+    INVALID_REQUEST("invalid_request", "Invalid Token Request"),
+    INVALID_CLIENT("invalid_client", "Invalid Client"),
+    INVALID_GRANT("invalid_grant", "Invalid Grant"),
+    UNAUTHORIZED_CLIENT("unauthorized_client", "Unauthorized Client"),
+    UNAUTHORIZED_GRANT_TYPE("unsupported_grant_type", "Unauthorized Grant Type"),
+    INVALID_SCOPE("invalid_scope", "Invalid Scope");
+
+    override fun toString(): String {
+        return this.type
+    }
+
+    companion object {
+        fun fromString(type: String): OIDCTokenErrorResponse {
+            val map = OIDCTokenErrorResponse.entries.associateBy(OIDCTokenErrorResponse::type)
+            return map[type]!!
+        }
+    }
+}
+
+enum class OIDCTokenType(private val type: String) {
+    BEARER("bearer"),
+    MAC("mac");
+
+    override fun toString(): String {
+        return this.type
+    }
+
+    companion object {
+        fun fromString(type: String): OIDCTokenType {
+            val map = OIDCTokenType.entries.associateBy(OIDCTokenType::type)
+            return map[type]!!
+        }
+    }
+}
+
+data class TokenResponse(
+    val error: OIDCTokenErrorResponse? = null,
+    val accessToken: String? = null,
+    val tokenType: OIDCTokenType? = null,
+    val expiresIn: Int? = null,
+    val refreshToken: String? = null,
+    val scope: List<String>? = null
+)
+
+@kotlinx.serialization.Serializable
 class OIDCCore(
     private val responseType: List<OIDCResponseType>,
     val scope: List<String>,
@@ -76,7 +125,6 @@ class OIDCCore(
     val clientSecret: String = "",
     private val clientAuth: ClientAuthType = ClientAuthType.BASIC
 ) {
-
     private var nonce:String = ""
     private var state:String = ""
 
@@ -135,5 +183,51 @@ class OIDCCore(
         }
 
         return stateList
+    }
+
+    fun getTokenFromCode(returnUri: Uri,
+                         responseHandler: Response.Listener<JSONObject> = Response.Listener {},
+                         errorHandler: Response.ErrorListener = Response.ErrorListener {}): JsonFormRequest {
+        if (!responseType.contains(OIDCResponseType.CODE)){
+            throw RuntimeException("Can't get token from code for a client not requesting a code response type")
+        }
+        if (returnUri.getQueryParameter("code") == null){
+            throw RuntimeException("Getting token from code impossible - no code in return URL")
+        }
+
+        val data = mutableMapOf<String,String>()
+        data["grant_type"] = "authorization_code"
+        data["code"] = returnUri.getQueryParameter("code")!!
+        data["client_id"] = clientId
+        data["client_secret"] = clientSecret
+        data["redirect_uri"] = redirectUri
+
+        return JsonFormRequest(
+            Request.Method.POST,
+            tokenUri,
+            data,
+            responseHandler,
+            errorHandler
+        )
+    }
+
+    fun validateTokenResponse(response: JSONObject): TokenResponse{
+        if (response.has("error")) {
+            return TokenResponse(
+                OIDCTokenErrorResponse.fromString(response.getString("error"))
+            )
+        }
+
+        return TokenResponse(
+            accessToken = response.getString("access_token"),
+            tokenType = OIDCTokenType.fromString(response.getString("token_type")),
+            expiresIn = if (response.has("expires_in")) response.getInt("expires_in") else null,
+            refreshToken = if (response.has("refresh_token")) response.getString("refresh_token") else null,
+            scope = if (response.has("scope")) response.getString("scope").split(" ") else null
+        )
+    }
+
+    fun getUserinfo(accessToken: String?): JsonObjectRequest? {
+        return null
     }
 }
