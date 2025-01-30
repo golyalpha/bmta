@@ -1,5 +1,6 @@
 package com.shielddagger.auth.oidc_debugger
 
+import android.media.session.MediaSession.Token
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -17,11 +18,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -148,7 +147,7 @@ fun Analysis(data: Uri?, modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .padding(32.dp, 0.dp, 0.dp),
                     color = if (it.success) Color(context.resources.getColor(R.color.success))
-                            else Color(context.resources.getColor(R.color.failure))
+                            else Color.Red
                 )
             }
 
@@ -293,9 +292,11 @@ fun Analysis(data: Uri?, modifier: Modifier = Modifier) {
     }, {
         tokenData.value = TokenResponse(OIDCTokenErrorResponse.INVALID_REQUEST)
         tokenExchange.value = false
+        userinfoError.value = "Token Exchange Failed"
         userinfoExchange.value = false
     })
     queue.add(tokenRequest)
+
 
 }
 

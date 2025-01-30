@@ -9,17 +9,17 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,7 +71,7 @@ fun IssuerForm(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var client: OIDCCore? = null;
 
-    if (context.fileList().contains("issuerConfig")) {
+    if (context.fileList()?.contains("issuerConfig") == true) {
         val ifo = context.openFileInput("issuerConfig")
         try {
             client = Json.decodeFromStream<OIDCCore>(ifo);
@@ -88,6 +88,10 @@ fun IssuerForm(modifier: Modifier = Modifier) {
     var clientId by remember { mutableStateOf(client?.clientId ?: "") }
     var clientSecret by remember { mutableStateOf(client?.clientSecret ?: "") }
     var scopes by remember { mutableStateOf(client?.scope ?: listOf("")) }
+
+    var authCodeResponse by remember { mutableStateOf(client?.responseType?.contains(OIDCResponseType.CODE) ?: true) }
+    var tokenResponse by remember { mutableStateOf(client?.responseType?.contains(OIDCResponseType.TOKEN) ?: false) }
+    var idTokenResponse by remember { mutableStateOf(client?.responseType?.contains(OIDCResponseType.ID_TOKEN) ?: false) }
 
     Column (modifier = modifier
         .padding(10.dp)
@@ -111,10 +115,40 @@ fun IssuerForm(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth())
         TextField(scopes.joinToString(" "), { scopes = it.split(" ")},
             label = { Text("Scopes")},
-            modifier = Modifier.fillMaxWidth())
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(authCodeResponse, {authCodeResponse = it})
+            Text("Authorization Code")
+        }
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(tokenResponse, {tokenResponse = it})
+            Text("Token")
+        }
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(idTokenResponse, {idTokenResponse = it})
+            Text("ID Token")
+        }
         Button({
+            val responseTypes = mutableListOf<OIDCResponseType>()
+            if (authCodeResponse)
+                responseTypes.add(OIDCResponseType.CODE)
+            if (tokenResponse)
+                responseTypes.add(OIDCResponseType.TOKEN)
+            if (idTokenResponse)
+                responseTypes.add(OIDCResponseType.ID_TOKEN)
+
             val oidcClient = OIDCCore(
-                listOf(OIDCResponseType.CODE),
+                responseTypes,
                 scopes,
                 clientId,
                 context.resources.getString(R.string.redirect_uri),
@@ -136,7 +170,7 @@ fun IssuerForm(modifier: Modifier = Modifier) {
 
             val intent = Intent(Intent.ACTION_VIEW, authUri)
             context.startActivity(intent)
-        }) {
+        }, enabled = authCodeResponse || tokenResponse || idTokenResponse) {
             Text("Authorize")
         }
     }

@@ -6,6 +6,7 @@ import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.JsonObjectRequest
 import org.json.JSONObject
+import java.net.URLDecoder
 import java.util.ArrayList
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -55,7 +56,8 @@ enum class OIDCAuthState(private val type: String, val message: String, val succ
     INVALID_REQUEST_OBJECT("invalid_request_object", "Invalid Request Object", false),
     REQUEST_NOT_SUPPORTED("request_not_supported", "Request Not Supported", false),
     REQUEST_URI_NOT_SUPPORTED("request_uri_not_supported", "Request URI Not Supported", false),
-    REGISTRATION_NOT_SUPPORTED("registration_not_supported", "Registration Not Supported", false);
+    REGISTRATION_NOT_SUPPORTED("registration_not_supported", "Registration Not Supported", false),
+    BAD_RESPONSE("bad_response", "Bad Response from IdP", false);
 
     override fun toString(): String {
         return this.type
@@ -117,9 +119,26 @@ data class TokenResponse(
     val scope: List<String>? = null
 )
 
+private fun parseQueryString(query:String): Map<String, List<String>> {
+    return  query.split("&")
+        .mapNotNull { kvItem ->
+            val kvList = kvItem.split("=")
+            kvList.takeIf { it.size == 2 }
+        }
+        .mapNotNull { kvList ->
+            val (k, v) = kvList
+            (k to URLDecoder.decode(v.trim(), "UTF-8")).takeIf { v.isNotBlank() }
+        }
+        .groupBy { (key, _) -> key }
+        .map { mapEntry ->
+            mapEntry.key to mapEntry.value.map { it.second }
+        }
+        .toMap()
+}
+
 @kotlinx.serialization.Serializable
 class OIDCCore(
-    private val responseType: List<OIDCResponseType>,
+    val responseType: List<OIDCResponseType>,
     val scope: List<String>,
     val clientId: String,
     val redirectUri: String,
@@ -127,7 +146,7 @@ class OIDCCore(
     val tokenUri: String,
     val userinfoUri: String,
     val clientSecret: String = "",
-    private val clientAuth: ClientAuthType = ClientAuthType.BASIC
+    private val clientAuth: ClientAuthType = ClientAuthType.POST
 ) {
     private var nonce:String = ""
     private var state:String = ""
@@ -152,18 +171,31 @@ class OIDCCore(
     }
 
     fun validateAuthResponse(returnUri:Uri): List<OIDCAuthState>{
-        if (returnUri.getQueryParameter("state") != state){
+        Log.d("oidccore", "validateAuthResponse: query: ${returnUri.query}")
+        Log.d("oidccore", "validateAuthResponse: fragment: ${returnUri.fragment}")
+        val data = returnUri.encodedQuery ?: returnUri.encodedFragment
+
+        if (data == null){
+            return listOf(OIDCAuthState.BAD_RESPONSE)
+        }
+
+        val params = parseQueryString(data)
+        Log.d("oidccore", "validateAuthResponse: params: $params")
+
+        if (params["state"]!![0] != state){
+            Log.e("oidccore", "validateAuthResponse: expected: $state")
+            Log.e("oidccore", "validateAuthResponse: received: ${params["state"]!![0]}")
             return listOf(OIDCAuthState.INVALID_STATE)
         }
 
-        if (returnUri.getQueryParameter("error") != null){
+        if (params["error"]?.isNotEmpty() == true){
             return listOf(OIDCAuthState.fromString(returnUri.getQueryParameter("error")!!))
         }
 
         val stateList = ArrayList<OIDCAuthState>(3)
 
         if (responseType.contains(OIDCResponseType.CODE)) {
-            if (returnUri.getQueryParameter("code") != null){
+            if (params["code"]?.get(0) != null){
                 stateList.add(OIDCAuthState.CODE_OK)
             } else {
                 stateList.add(OIDCAuthState.CODE_FAIL)
@@ -171,7 +203,7 @@ class OIDCCore(
         }
 
         if (responseType.contains(OIDCResponseType.TOKEN)) {
-            if (returnUri.getQueryParameter("token") != null){
+            if (params["token"]?.get(0) != null){
                 stateList.add(OIDCAuthState.TOKEN_OK)
             } else {
                 stateList.add(OIDCAuthState.TOKEN_FAIL)
@@ -179,7 +211,7 @@ class OIDCCore(
         }
 
         if (responseType.contains(OIDCResponseType.ID_TOKEN)) {
-            if (returnUri.getQueryParameter("id_token") != null){
+            if (params["id_token"]?.get(0) != null){
                 stateList.add(OIDCAuthState.ID_TOKEN_OK)
             } else {
                 stateList.add(OIDCAuthState.ID_TOKEN_FAIL)
@@ -192,16 +224,13 @@ class OIDCCore(
     fun getTokenFromCode(returnUri: Uri,
                          responseHandler: Response.Listener<JSONObject> = Response.Listener {},
                          errorHandler: Response.ErrorListener = Response.ErrorListener {}): JsonFormRequest {
-        if (!responseType.contains(OIDCResponseType.CODE)){
-            throw RuntimeException("Can't get token from code for a client not requesting a code response type")
-        }
-        if (returnUri.getQueryParameter("code") == null){
-            throw RuntimeException("Getting token from code impossible - no code in return URL")
-        }
+        val authData = returnUri.query ?: returnUri.fragment
+
+        val params = parseQueryString(authData ?: "")
 
         val data = mutableMapOf<String,String>()
         data["grant_type"] = "authorization_code"
-        data["code"] = returnUri.getQueryParameter("code")!!
+        data["code"] = params["code"]?.get(0) ?: ""
         data["client_id"] = clientId
         data["client_secret"] = clientSecret
         data["redirect_uri"] = redirectUri
