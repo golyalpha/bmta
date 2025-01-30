@@ -92,7 +92,7 @@ fun Analysis(data: Uri?, modifier: Modifier = Modifier) {
         mutableStateOf(JSONObject())
     }
 
-    if (context.fileList().contains("issuerConfig")) {
+    if (context.fileList()?.contains("issuerConfig") == true) {
         val ifo = context.openFileInput("issuerConfig")
         try {
             client = Json.decodeFromStream<OIDCCore>(ifo);
